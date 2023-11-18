@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	domain := flag.String("domain", "https://www.y.uno/", "Domain used to build a sitemap")
+	domain := flag.String("domain", "https://htmx.org/", "Domain used to build a sitemap")
 
 	sitemap := service.BuildSitemap(*domain)
 

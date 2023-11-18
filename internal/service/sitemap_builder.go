@@ -1,16 +1,17 @@
 package service
 
 import (
-	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/aledeltoro/html-link-parser/link"
+	"github.com/aledeltoro/sitemap-builder/internal/client"
 	"github.com/aledeltoro/sitemap-builder/internal/models"
 )
 
+// BuildSitemap searches a domain to build a sitemap according
+// to the XML schema of the Sitemap protocal
 func BuildSitemap(domain string) *models.Sitemap {
 	sitemap := models.NewSitemap()
 
@@ -21,59 +22,47 @@ func BuildSitemap(domain string) *models.Sitemap {
 
 	for queue.Size() != 0 {
 		domain := queue.DeQueue()
+
+		parsedDomain, err := url.Parse(domain)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		response, err := client.GetPage(parsedDomain.String())
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		defer func() {
+			_ = response.Body.Close()
+		}()
+
 		visited[domain] = true
+		sitemap.AddURL(parsedDomain.String())
 
-		url, err := url.Parse(domain)
+		links, err := link.Extract(response.Body)
 		if err != nil {
 			log.Fatalln(err)
 		}
-
-		req, err := http.NewRequest(http.MethodGet, url.String(), nil)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		defer res.Body.Close()
-
-		if res.StatusCode != http.StatusOK {
-			log.Fatalf("invalid status code: %d", res.StatusCode)
-		}
-
-		sitemap.URL = append(sitemap.URL, models.URL{Locator: domain})
-
-		links, err := link.Extract(res.Body)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		hostname := getDomain(url.Host)
 
 		for _, link := range links {
-			if !strings.Contains(link.Href, hostname) {
-				fmt.Printf("URL outside of domain or relative url: %s", link.Href)
-
+			parsedLink, err := parsedDomain.Parse(link.Href)
+			if err != nil {
+				log.Println("error parsing link: ", err)
 				continue
 			}
 
-			_, ok := visited[link.Href]
+			if !strings.Contains(parsedLink.Host, parsedDomain.Hostname()) {
+				continue
+			}
+
+			_, ok := visited[parsedLink.String()]
 			if !ok {
-				queue.Enqueue(link.Href)
+				queue.Enqueue(parsedLink.String())
 				continue
 			}
-
-			fmt.Printf("Already visited: %s \n", link.Href)
 		}
-
 	}
 
 	return sitemap
-}
-
-func getDomain(url string) string {
-	return strings.TrimPrefix(url, "www.")
 }

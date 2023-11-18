@@ -11,7 +11,7 @@ import (
 func TestBuildSitemap(t *testing.T) {
 	c := require.New(t)
 
-	sitemap := BuildSitemap("https://www.y.uno/")
+	sitemap := BuildSitemap("https://htmx.org/")
 
 	output, err := xml.MarshalIndent(sitemap, " ", " ")
 	c.NoError(err)
