@@ -35,7 +35,10 @@ func (q *Queue) DeQueue() string {
 
 	removedItem := q.items[0]
 
-	newItems := make([]string, 0, len(q.items))
+	// By creating and copying remaining elements to new slice
+	// we avoid referencing the original slice by re-slicing,
+	// thus allowing the GC to remove it from memory
+	newItems := make([]string, len(q.items[1:]))
 	copy(newItems, q.items[1:])
 	q.items = newItems
 

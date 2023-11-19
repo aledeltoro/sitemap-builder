@@ -12,6 +12,8 @@ import (
 func main() {
 	domain := flag.String("domain", "https://htmx.org/", "Domain used to build a sitemap")
 
+	flag.Parse()
+
 	sitemap := service.BuildSitemap(*domain)
 
 	output, err := xml.MarshalIndent(sitemap, " ", " ")

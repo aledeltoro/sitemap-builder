@@ -22,10 +22,15 @@ func TestDeQueue(t *testing.T) {
 
 	queue := NewQueue()
 	queue.Enqueue("test")
+	queue.Enqueue("test2")
 
 	item := queue.DeQueue()
 	c.Equal("test", item)
+	c.Equal(1, queue.Size())
 
 	item = queue.DeQueue()
-	c.Empty(item)
+	c.Equal("test2", item)
+	c.Equal(0, queue.Size())
+
+	c.Empty(queue.DeQueue())
 }
