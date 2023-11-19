@@ -26,12 +26,14 @@ func BuildSitemap(domain string) *models.Sitemap {
 
 		parsedDomain, err := url.Parse(currentDomain)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			continue
 		}
 
 		links, err := client.GetPageLinks(parsedDomain.String())
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			continue
 		}
 
 		for _, rawLink := range links {
