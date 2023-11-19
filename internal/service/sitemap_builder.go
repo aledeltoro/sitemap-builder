@@ -5,64 +5,63 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aledeltoro/html-link-parser/link"
 	"github.com/aledeltoro/sitemap-builder/internal/client"
 	"github.com/aledeltoro/sitemap-builder/internal/models"
 )
 
 // BuildSitemap searches a domain to build a sitemap according
-// to the XML schema of the Sitemap protocal
+// to the XML schema of the Sitemap protocol.
+// The search is performed by doing a Breadth-First Search (BFS)
 func BuildSitemap(domain string) *models.Sitemap {
 	sitemap := models.NewSitemap()
-
 	queue := models.NewQueue()
-	queue.Enqueue(domain)
-
 	visited := map[string]bool{}
 
+	sitemap.AddURL(domain)
+	queue.Enqueue(domain)
+	visited[domain] = true
+
 	for queue.Size() != 0 {
-		domain := queue.DeQueue()
+		currentDomain := queue.DeQueue()
 
-		parsedDomain, err := url.Parse(domain)
+		parsedDomain, err := url.Parse(currentDomain)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		response, err := client.GetPage(parsedDomain.String())
+		links, err := client.GetPageLinks(parsedDomain.String())
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		defer func() {
-			_ = response.Body.Close()
-		}()
-
-		visited[domain] = true
-		sitemap.AddURL(parsedDomain.String())
-
-		links, err := link.Extract(response.Body)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		for _, link := range links {
-			parsedLink, err := parsedDomain.Parse(link.Href)
-			if err != nil {
-				log.Println("error parsing link: ", err)
+		for _, rawLink := range links {
+			link := processLink(parsedDomain, rawLink.Href)
+			if link == "" {
 				continue
 			}
 
-			if !strings.Contains(parsedLink.Host, parsedDomain.Hostname()) {
-				continue
-			}
-
-			_, ok := visited[parsedLink.String()]
-			if !ok {
-				queue.Enqueue(parsedLink.String())
-				continue
+			if _, ok := visited[link]; !ok {
+				sitemap.AddURL(link)
+				queue.Enqueue(link)
+				visited[link] = true
 			}
 		}
 	}
 
 	return sitemap
+}
+
+func processLink(parsedDomain *url.URL, rawLink string) string {
+	link, err := parsedDomain.Parse(rawLink)
+	if err != nil {
+		return ""
+	}
+
+	doesDomainMatch := strings.Contains(link.Host, parsedDomain.Hostname())
+
+	if !doesDomainMatch {
+		return ""
+	}
+
+	return link.String()
 }
