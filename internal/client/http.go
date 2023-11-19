@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/aledeltoro/html-link-parser/link"
 )
 
 var (
@@ -13,15 +15,19 @@ var (
 )
 
 // GetPage performs a HTTP GET request to fetch the HTML of the given URL
-func GetPage(url string) (*http.Response, error) {
+func GetPageLinks(url string) ([]link.Link, error) {
 	res, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("performing request: %w", err)
 	}
 
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("invalid status code: %d", res.StatusCode)
 	}
 
-	return res, nil
+	return link.Extract(res.Body)
 }

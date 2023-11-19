@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +23,7 @@ var (
 		</html>`
 )
 
-func TestGetPage(t *testing.T) {
+func TestGetPageLinks(t *testing.T) {
 	c := require.New(t)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -33,14 +32,7 @@ func TestGetPage(t *testing.T) {
 
 	defer server.Close()
 
-	res, err := GetPage(server.URL)
+	links, err := GetPageLinks(server.URL)
 	c.NoError(err)
-
-	defer func() {
-		_ = res.Body.Close()
-	}()
-
-	page, err := io.ReadAll(res.Body)
-	c.NoError(err)
-	c.Equal(mockHTML, string(page))
+	c.Len(links, 2)
 }
